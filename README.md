@@ -1,13 +1,13 @@
 # rozproszone
 
-Skład zespołu:
-Aleksander Glebionek;
-Piotr Biazik;
-Piotr Piątek;
+<h3>Skład zespołu:</h3>
+<li>Aleksander Glebionek </li>
+<li>Piotr Biazik</li>
+<li>Piotr Piątek</li>
 
-temat:
-gra w papier, kamień i nożyce
+<h3>Temat</h3>
+<li>Gra papier, kamień, nożyce </li>
 
-techonologie:
-backend: python z wykorzystaniem websockets;
-fronend: javascript framework tbd
+<h3>Techonologie:</h3>
+<li>backend: python z wykorzystaniem websockets</li>
+<li>fronend: javascript framework tbd</li>
