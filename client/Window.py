@@ -17,17 +17,17 @@ class Window:
         use_dark_theme()
         
         self.client = self.connect_client()
-        self.actions = self.connect_action()
+        self.actions = self.connect_actions()
         
         self.generate_menu_frame()
         self.generate_login_frame()
-        self.game_frame = Frame(master=self.root)
-        self.join_game_frame = Frame(master=self.root)     
+        self.generate_create_game_frame()
+        self.generate_join_game_frame()
         
     def connect_client(self):
         return Client(self)
         
-    def connect_action(self):
+    def connect_actions(self):
         return Actions(self, self.client)
         
     def show_frame(self, frame_to_show: Frame):
@@ -45,7 +45,7 @@ class Window:
         self.username = StringVar(master=self.root)
         Label(master=self.login_main_frame, text="Enter username", font=(25)).grid(row=0, column=0, padx=5, pady=100)
         Entry(master=self.login_main_frame, textvariable=self.username, width=50).grid(row=1, column=0, padx=5, pady=10)
-        Button(master=self.login_main_frame, text="Zaloguj", command=self.actions.login_action).grid(row=2, column=0, padx=5, pady=10)
+        Button(master=self.login_main_frame, text="Log in", command=self.actions.login_action).grid(row=2, column=0, padx=5, pady=10)
         self.login_errors = Text(master=self.login_main_frame, fg="red", state="disabled")
         self.login_errors.grid(row=3, column=0, padx=5, pady=10)
         
@@ -57,9 +57,15 @@ class Window:
         
     def generate_menu_frame(self):
         self.menu_main_frame = Frame(master=self.root)
-        Button(master=self.menu_main_frame, text="Join game", command=lambda: self.actions.join_game, width=50).grid(row=0, column=0, padx=5, pady=50)
-        Button(master=self.menu_main_frame, text="Create grę", command=lambda: self.actions.create_game, width=50).grid(row=1, column=0, padx=5, pady=50)
+        Button(master=self.menu_main_frame, text="Join game", command=lambda: self.show_frame(self.join_game_main_frame), width=50).grid(row=0, column=0, padx=5, pady=50)
+        Button(master=self.menu_main_frame, text="Create game", command=lambda: self.show_frame(self.create_game_main_frame), width=50).grid(row=1, column=0, padx=5, pady=50)
     
     def generate_join_game_frame(self):
-        pass
+        self.join_game_main_frame = Frame(master=self.root)
+        # here I need to ask the server for a list of available games
+        
+    def generate_create_game_frame(self):
+        self.create_game_main_frame = Frame(master=self.root)
 
+    def generate_game_frame(self):
+        self.game_main_frame = Frame(master=self.root)

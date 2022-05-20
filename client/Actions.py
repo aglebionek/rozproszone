@@ -33,7 +33,8 @@ class Actions:
         pass
 
     def create_game_action(self):
-        pass
+        request = Request(user=self.window.username.get(), command="create_game")
+
         
     login = login_action
     join_game = join_game_action
