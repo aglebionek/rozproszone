@@ -36,14 +36,19 @@ class Actions:
     def create_game_action(self):
         request = Request(user=self.window.username.get(), command="create_game")
         request.data = {
-            "game_name": self.window.game_name,
-            "req_wins": self.window.wins_required,
-            "game_password": self.window.password
+            "game_name": self.window.game_name.get(),
+            "req_wins": self.window.wins_required.get(),
+            "game_password": self.window.password.get()
         }
         self.client.socket.send(pickle.dumps(request))
+        response: Response = pickle.loads(self.client.socket.recv(self.client.buffer_size))
+        if response.success: # change this to response.success after we get response
+            self.window.generate_game_frame()
+            self.window.show_frame(self.window.game_main_frame)
+            return
+        self.window.set_error(response.error, self.window.create_game_errors)
 
+    def make_move_action(self, move):
+        # here will send move to server
+        pass
 
-    login = login_action
-    join_game = join_game_action
-    create_game = create_game_action
-    

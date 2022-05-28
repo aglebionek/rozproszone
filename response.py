@@ -7,4 +7,4 @@ class Response:
         self.error = error
         
     def __str__(self) -> str:
-        return f"Status: {self.success}\nData: {self.data}\nError: {self.error}"
+        return f"Success: {self.success}\nData: {self.data}\nError: {self.error}"

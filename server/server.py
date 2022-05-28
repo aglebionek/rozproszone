@@ -74,12 +74,17 @@ class Server:
                     elif request.command == "create_game":
                         #WIP
                         #this is gonna come with the game data, TODO check if the game_id doesn't already exist
-                        game_id = request.data["game_id"]
+                        self.game_name = request.data["game_name"]
+                        print(Server.games)
+                        if self.game_name in Server.games.keys():
+                            response.error = "A game with that name already exists. Please try a different name."
+                            self.client.send(pickle.dumps(response))
+                            continue
                         
                         self.lock.acquire()
-                        Server.games[game_id] = GameData(player1=self.user)
-                        
+                        Server.games[self.game_name] = GameData(player1=self.user, game_name=self.game_name)
                         self.lock.release()
+                        
                         response.success = True
                     elif request.command == "join_game":
                         game_id = request.data["game_id"]
@@ -99,11 +104,17 @@ class Server:
                     break
 
             self.lock.acquire()
-            try: del Server.users[self.user]
+            try: 
+                del Server.users[self.user]
+                print(f"Removed user {self.user}")
+            except Exception as e: print(e)
+            try: 
+                del Server.games[self.game_name]
+                print(f"Removed game {self.game_name}")
             except Exception as e: print(e)
             self.lock.release()
             self.client.close()
-            print(f"{self.address} - {self.user} disconnected, closing thread.")
+            print(f"{self.address} - {self.user} disconnected successfully, closing thread.")
             
             
     class GameThread(Thread):
