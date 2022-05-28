@@ -10,7 +10,7 @@ from response import Response
 buf = 1024
 
 class Server:
-    users = [] # replace with dict where the key is the nickname and the value is the player socket?
+    users: dict[str, socket.socket] = {}
     games: dict[str, GameData] = {}
     
     def __init__(self) -> None:
@@ -29,9 +29,9 @@ class Server:
 
     class UserThread(Thread):
         user = ""
-        game_id = ""
         lock = Lock()
-
+        disconnect_user = True
+        
         @staticmethod
         def is_socket_closed(sock: socket.socket) -> bool:
             try:
@@ -57,46 +57,68 @@ class Server:
                     request: Request = pickle.loads(bytes)
                     print(request)
                     if request.command == "login":
-                        Server.UserThread.lock.acquire()
-                        
-                        if request.user in Server.users:
+                        if request.user in Server.users.keys():
                             response.error = "A user with that name is already logged in. Please change the name and try again."
                             client.send(pickle.dumps(response))
                             continue
-                        Server.users.append(request.user)
                         
+                        Server.UserThread.lock.acquire()
+                        Server.users[request.user] = client
                         Server.UserThread.lock.release()
                         
                         Server.UserThread.user = request.user
                         response.success = True
                     elif request.command == "create_game":
                         #WIP
-                        Server.UserThread.game_id = str(uuid.uuid4())
+                        #this is gonna come with the game data, TODO check if the game_id doesn't already exist
+                        game_id = request.data["game_id"]
+                        
                         Server.UserThread.lock.acquire()
-                        Server.games[Server.UserThread.game_id] = GameData(player1=Server.UserThread.user)
+                        Server.games[game_id] = GameData(player1=Server.UserThread.user)
                         
                         Server.UserThread.lock.release()
                         response.success = True
                     elif request.command == "join_game":
-                        #WIP
-                        #if this happens, then we should start a new thread for the game (and kill this thread for the users in a game?)
-                        pass    
-                        
-                except Exception as e:
-                    response.error = e
-                finally:
+                        game_id = request.data["game_id"]
+                        Server.UserThread.disconnect_user = False
+                        # send client and game id
+                        Thread(target = Server.GameThread.run, args=(client, game_id, Server.UserThread.user)).start()
+                        response.success = True
+                    
                     client.send(pickle.dumps(response))
-            
+                    
+                except Exception as e:
+                    print("Exception caught")
+                    print(e)
+                    break
+
             Server.UserThread.lock.acquire()
-            Server.users.remove(Server.UserThread.user)
+            try: del Server.users[Server.UserThread.user]
+            except Exception as e: print(e)
             Server.UserThread.lock.release()
-            
             client.close()
             print(f"{address} - {Server.UserThread.user} disconnected, closing thread.")
             
+            
     class GameThread(Thread):
         lock = Lock()
-        #WIP
-
-
-
+        
+        choices = {
+            "1": "rock",
+            "3": "paper",
+            "7": "scissors"
+        }
+        
+        outcomes = {
+            ""
+        }
+        
+        @staticmethod
+        def run(game_id: str, user: str):
+            client = Server.users[user]
+            
+            bytes = client.recv(buf)
+            request: Request = pickle.loads(bytes)
+            #TODO 1. read sent data (player choice)
+            #TODO 2. if it's the non game_owner thread, wait for another input
+            #TODO 3. if it's the game_owner thread, calculate who won and and send a response updating the score and allowing new turn if nobody won

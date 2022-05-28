@@ -49,11 +49,11 @@ class Window:
         self.login_errors = Text(master=self.login_main_frame, fg="red", state="disabled")
         self.login_errors.grid(row=3, column=0, padx=5, pady=10)
         
-    def set_login_error(self, error):
-        self.login_errors.config(state="normal")
-        self.login_errors.delete("1.0", END)
-        self.login_errors.insert(INSERT, error)
-        self.login_errors.config(state="disabled")
+    def set_error(self, error: str, error_widget: Text):
+        error_widget.config(state="normal")
+        error_widget.delete("1.0", END)
+        error_widget.insert(INSERT, error)
+        error_widget.config(state="disabled")
         
     def generate_menu_frame(self):
         self.menu_main_frame = Frame(master=self.root)
