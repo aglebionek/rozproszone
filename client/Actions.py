@@ -40,9 +40,9 @@ class Actions:
             "req_wins": self.window.wins_required,
             "game_password": self.window.password
         }
-        
+        self.client.socket.send(pickle.dumps(request))
 
-        
+
     login = login_action
     join_game = join_game_action
     create_game = create_game_action

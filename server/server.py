@@ -29,8 +29,7 @@ class Server:
             thread.start()
 
     class UserThread(Thread):
-        def __init__(self, group=None, target=None, name=None,
-                 args=(), kwargs=None, *, daemon=None):
+        def __init__(self, group=None, target=None, name=None, args=(), kwargs=None, *, daemon=None):
             super().__init__(group, target, name, args, kwargs, daemon=daemon)
             self.client: socket.socket = kwargs["client"]
             self.address: tuple = kwargs["address"]
@@ -77,10 +76,10 @@ class Server:
                         #this is gonna come with the game data, TODO check if the game_id doesn't already exist
                         game_id = request.data["game_id"]
                         
-                        Server.UserThread.lock.acquire()
-                        Server.games[game_id] = GameData(player1=Server.UserThread.user)
+                        self.lock.acquire()
+                        Server.games[game_id] = GameData(player1=self.user)
                         
-                        Server.UserThread.lock.release()
+                        self.lock.release()
                         response.success = True
                     elif request.command == "join_game":
                         game_id = request.data["game_id"]
@@ -88,10 +87,15 @@ class Server:
                         response.success = True
                     
                     self.client.send(pickle.dumps(response))
-                    
                 except Exception as e:
                     print("Exception caught")
                     print(e)
+                    response.success = False
+                    response.error = e
+                    try: self.client.send(pickle.dumps(response))
+                    except OSError as os_e:
+                        print("OS Exception caught")
+                        print(os_e)
                     break
 
             self.lock.acquire()
