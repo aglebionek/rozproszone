@@ -63,9 +63,21 @@ class Window:
     def generate_join_game_frame(self):
         self.join_game_main_frame = Frame(master=self.root)
         # here I need to ask the server for a list of available games
+        Button(master=self.join_game_main_frame, text="Cancel", command=lambda: self.show_frame(self.menu_main_frame), width=50).grid(row=0, column=0, padx=5, pady=50)
         
     def generate_create_game_frame(self):
         self.create_game_main_frame = Frame(master=self.root)
+        self.game_name = StringVar(master=self.root)
+        self.wins_required = StringVar(master=self.root)
+        self.password = StringVar(master=self.root)
+        Label(master=self.create_game_main_frame, text="Game name", font=(25)).grid(row=0, column=0, padx=5, pady=10)
+        Entry(master=self.create_game_main_frame, textvariable=self.game_name, width=50).grid(row=1, column=0, padx=5, pady=20)
+        Label(master=self.create_game_main_frame, text="Required wins", font=(25)).grid(row=2, column=0, padx=5, pady=10)
+        Entry(master=self.create_game_main_frame, textvariable=self.wins_required, width=50).grid(row=3, column=0, padx=5, pady=20)
+        Label(master=self.create_game_main_frame, text="Password", font=(25)).grid(row=4, column=0, padx=5, pady=10)
+        Entry(master=self.create_game_main_frame, textvariable=self.password, width=50).grid(row=5, column=0, padx=5, pady=20)
+        Button(master=self.create_game_main_frame, text="Create Game", command=self.actions.create_game_action).grid(row=6, column=0, padx=5, pady=75)
+        Button(master=self.create_game_main_frame, text="Cancel", command=lambda: self.show_frame(self.menu_main_frame), width=50).grid(row=7, column=0, padx=5, pady=50)
 
     def generate_game_frame(self):
         self.game_main_frame = Frame(master=self.root)
