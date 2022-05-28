@@ -33,7 +33,8 @@ class Server:
             super().__init__(group, target, name, args, kwargs, daemon=daemon)
             self.client: socket.socket = kwargs["client"]
             self.address: tuple = kwargs["address"]
-            self.user: str = ""
+            self.game_name = ""
+            self.user = ""
             self.lock: Lock = Lock()
         
         @staticmethod
@@ -72,10 +73,7 @@ class Server:
                         self.user = request.user
                         response.success = True
                     elif request.command == "create_game":
-                        #WIP
-                        #this is gonna come with the game data, TODO check if the game_id doesn't already exist
                         self.game_name = request.data["game_name"]
-                        print(Server.games)
                         if self.game_name in Server.games.keys():
                             response.error = "A game with that name already exists. Please try a different name."
                             self.client.send(pickle.dumps(response))
@@ -87,9 +85,14 @@ class Server:
                         
                         response.success = True
                     elif request.command == "join_game":
-                        game_id = request.data["game_id"]
                         # send client and game id
                         response.success = True
+                    elif request.command == "show_games":
+                        response.data = {
+                            "games": list(Server.games.values())
+                        }
+                        response.success = True
+
                     
                     self.client.send(pickle.dumps(response))
                 except Exception as e:
