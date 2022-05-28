@@ -34,6 +34,14 @@ class Actions:
 
     def create_game_action(self):
         request = Request(user=self.window.username.get(), command="create_game")
+        
+        if True: # change this to response.success after we get response
+            self.window.generate_game_frame()
+            self.window.show_frame(self.window.game_main_frame)
+
+    def make_move_action(self, move):
+        # here will send move to server
+        pass
 
         
     login = login_action

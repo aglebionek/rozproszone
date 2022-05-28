@@ -81,3 +81,18 @@ class Window:
 
     def generate_game_frame(self):
         self.game_main_frame = Frame(master=self.root)
+        Label(master=self.game_main_frame, text="You", font=(25)).grid(row=0, column=0, columnspan=2, padx=5, pady=10)
+        Label(master=self.game_main_frame, text="Opponent", font=(25)).grid(row=0, column=2, columnspan=2, padx=5, pady=10)
+
+        # here moves will be displayed (text or img)
+        Label(master=self.game_main_frame, text="Your move", font=(25)).grid(row=1, column=0, columnspan=2, padx=5, pady=10)
+        Label(master=self.game_main_frame, text="Opponent's move", font=(25)).grid(row=1, column=2, columnspan=2, padx=5, pady=10)
+        
+        # button controls
+        Button(master=self.game_main_frame, text='Rock', command=lambda: self.actions.make_move_action("rock"), width=33).grid(row=2, column=0, padx=2, pady=5)
+        Button(master=self.game_main_frame, text='Paper', command=lambda: self.actions.make_move_action("paper"), width=33).grid(row=2, column=1, columnspan=2, padx=2, pady=5)
+        Button(master=self.game_main_frame, text='Scisors', command=lambda: self.actions.make_move_action("scisors"), width=33).grid(row=2, column=3, padx=2, pady=5)
+
+    def show_winner(self):
+        winner = Label(master=self.game_main_frame, text="YOU WIN", font=(25))
+        winner.place(relx = 0.5, rely = 0.5, anchor = CENTER)
