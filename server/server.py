@@ -25,12 +25,17 @@ class Server:
         print(f"Server is listening for connections at address: {self.addr}")
         while True:
             client, address = self.socket.accept()
-            Thread(target = Server.UserThread.run, args = (client,address)).start()
+            thread = Server.UserThread(kwargs={"client": client, "address": address})
+            thread.start()
 
     class UserThread(Thread):
-        user = ""
-        lock = Lock()
-        disconnect_user = True
+        def __init__(self, group=None, target=None, name=None,
+                 args=(), kwargs=None, *, daemon=None):
+            super().__init__(group, target, name, args, kwargs, daemon=daemon)
+            self.client: socket.socket = kwargs["client"]
+            self.address: tuple = kwargs["address"]
+            self.user: str = ""
+            self.lock: Lock = Lock()
         
         @staticmethod
         def is_socket_closed(sock: socket.socket) -> bool:
@@ -47,26 +52,25 @@ class Server:
                 print(e)
                 return False
         
-        @staticmethod
-        def run(client: socket.socket, address):
-            print(f"New thread created for accepted connection from: {address}")
-            while not Server.UserThread.is_socket_closed(client):
+        def run(self):
+            print(f"New thread created for accepted connection from: {self.address}")
+            while not Server.UserThread.is_socket_closed(self.client):
                 response: Response = Response(success=False)
                 try:
-                    bytes = client.recv(buf)
+                    bytes = self.client.recv(buf)
                     request: Request = pickle.loads(bytes)
                     print(request)
                     if request.command == "login":
                         if request.user in Server.users.keys():
                             response.error = "A user with that name is already logged in. Please change the name and try again."
-                            client.send(pickle.dumps(response))
+                            self.client.send(pickle.dumps(response))
                             continue
                         
-                        Server.UserThread.lock.acquire()
-                        Server.users[request.user] = client
-                        Server.UserThread.lock.release()
+                        self.lock.acquire()
+                        Server.users[request.user] = self.client
+                        self.lock.release()
                         
-                        Server.UserThread.user = request.user
+                        self.user = request.user
                         response.success = True
                     elif request.command == "create_game":
                         #WIP
@@ -80,24 +84,22 @@ class Server:
                         response.success = True
                     elif request.command == "join_game":
                         game_id = request.data["game_id"]
-                        Server.UserThread.disconnect_user = False
                         # send client and game id
-                        Thread(target = Server.GameThread.run, args=(client, game_id, Server.UserThread.user)).start()
                         response.success = True
                     
-                    client.send(pickle.dumps(response))
+                    self.client.send(pickle.dumps(response))
                     
                 except Exception as e:
                     print("Exception caught")
                     print(e)
                     break
 
-            Server.UserThread.lock.acquire()
-            try: del Server.users[Server.UserThread.user]
+            self.lock.acquire()
+            try: del Server.users[self.user]
             except Exception as e: print(e)
-            Server.UserThread.lock.release()
-            client.close()
-            print(f"{address} - {Server.UserThread.user} disconnected, closing thread.")
+            self.lock.release()
+            self.client.close()
+            print(f"{self.address} - {self.user} disconnected, closing thread.")
             
             
     class GameThread(Thread):
