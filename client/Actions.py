@@ -17,23 +17,29 @@ class Actions:
     def login_action(self):
         nickname = self.window.username.get()
         request = Request(command="login")
+        error_widget = self.window.login_errors
         if nickname == "":
-            self.window.set_login_error("Nickname cannot be empty")
+            self.window.set_error("Nickname cannot be empty", error_widget)
             return
-        self.window.set_login_error("")
+        self.window.set_error("", error_widget)
         request.user = nickname
         self.client.socket.send(pickle.dumps(request))      
         response: Response = pickle.loads(self.client.socket.recv(self.client.buffer_size))
         if response.success:
             self.window.show_frame(self.window.menu_main_frame)
             return
-        self.window.set_login_error(response.error)
+        self.window.set_error(response.error, error_widget)
             
     def join_game_action(self):
         pass
 
     def create_game_action(self):
         request = Request(user=self.window.username.get(), command="create_game")
+        request.data = {
+            "game_name": self.window.game_name,
+            "req_wins": self.window.wins_required,
+            "game_password": self.window.password
+        }
         
         if True: # change this to response.success after we get response
             self.window.generate_game_frame()
@@ -42,6 +48,7 @@ class Actions:
     def make_move_action(self, move):
         # here will send move to server
         pass
+        
 
         
     login = login_action
