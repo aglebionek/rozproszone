@@ -4,8 +4,11 @@ from tkinter.ttk import *
 from ctypes import windll
 from sv_ttk import use_dark_theme
 
+from game_data import GameData
+
 from .Client import Client
 from .Actions import Actions
+from client.game_to_join import GameToJoin
 
 windll.shcore.SetProcessDpiAwareness(1) # fix blurry font
 
@@ -64,6 +67,7 @@ class Window:
         self.join_game_main_frame = Frame(master=self.root)
         # here I need to ask the server for a list of available games
         Button(master=self.join_game_main_frame, text="Cancel", command=lambda: self.show_frame(self.menu_main_frame), width=50).grid(row=0, column=0, padx=5, pady=50)
+        Button(master=self.join_game_main_frame, text="test", command=self.test , width=50).grid(row=1, column=0, padx=5, pady=50)
         
     def generate_create_game_frame(self):
         self.create_game_main_frame = Frame(master=self.root)
@@ -96,3 +100,8 @@ class Window:
     def show_winner(self):
         winner = Label(master=self.game_main_frame, text="YOU WIN", font=(25))
         winner.place(relx = 0.5, rely = 0.5, anchor = CENTER)
+
+    def test(self):
+        game = GameToJoin(self, self.actions)
+        game.generate_game_to_join()
+        pass
