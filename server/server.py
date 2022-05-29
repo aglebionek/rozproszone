@@ -29,12 +29,12 @@ class Server:
             thread.start()
 
     class UserThread(Thread):
-        def __init__(self, group=None, target=None, name=None,
-                 args=(), kwargs=None, *, daemon=None):
+        def __init__(self, group=None, target=None, name=None, args=(), kwargs=None, *, daemon=None):
             super().__init__(group, target, name, args, kwargs, daemon=daemon)
             self.client: socket.socket = kwargs["client"]
             self.address: tuple = kwargs["address"]
-            self.user: str = ""
+            self.game_name = ""
+            self.user = ""
             self.lock: Lock = Lock()
         
         @staticmethod
@@ -73,33 +73,51 @@ class Server:
                         self.user = request.user
                         response.success = True
                     elif request.command == "create_game":
-                        #WIP
-                        #this is gonna come with the game data, TODO check if the game_id doesn't already exist
-                        game_id = request.data["game_id"]
+                        self.game_name = request.data["game_name"]
+                        if self.game_name in Server.games.keys():
+                            response.error = "A game with that name already exists. Please try a different name."
+                            self.client.send(pickle.dumps(response))
+                            continue
                         
-                        Server.UserThread.lock.acquire()
-                        Server.games[game_id] = GameData(player1=Server.UserThread.user)
+                        self.lock.acquire()
+                        Server.games[self.game_name] = GameData(player1=self.user, game_name=self.game_name)
+                        self.lock.release()
                         
-                        Server.UserThread.lock.release()
                         response.success = True
                     elif request.command == "join_game":
-                        game_id = request.data["game_id"]
                         # send client and game id
                         response.success = True
+                    elif request.command == "show_games":
+                        response.data = {
+                            "games": list(Server.games.values())
+                        }
+                        response.success = True
+
                     
                     self.client.send(pickle.dumps(response))
-                    
                 except Exception as e:
                     print("Exception caught")
                     print(e)
+                    response.success = False
+                    response.error = e
+                    try: self.client.send(pickle.dumps(response))
+                    except OSError as os_e:
+                        print("OS Exception caught")
+                        print(os_e)
                     break
 
             self.lock.acquire()
-            try: del Server.users[self.user]
+            try: 
+                del Server.users[self.user]
+                print(f"Removed user {self.user}")
+            except Exception as e: print(e)
+            try: 
+                del Server.games[self.game_name]
+                print(f"Removed game {self.game_name}")
             except Exception as e: print(e)
             self.lock.release()
             self.client.close()
-            print(f"{self.address} - {self.user} disconnected, closing thread.")
+            print(f"{self.address} - {self.user} disconnected successfully, closing thread.")
             
             
     class GameThread(Thread):

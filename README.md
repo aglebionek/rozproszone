@@ -10,4 +10,4 @@
 
 <h3>Techonologie:</h3>
 <li>backend: python z wykorzystaniem websockets</li>
-<li>frontend: javascript framework tbd</li>
+<li>frontend: python tkinter</li>
