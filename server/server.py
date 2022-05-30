@@ -1,6 +1,6 @@
 import pickle
 import socket
-import uuid
+import traceback
 from threading import Thread, Lock
 
 from game_data import GameData
@@ -36,6 +36,7 @@ class Server:
             self.game_name = ""
             self.user = ""
             self.lock: Lock = Lock()
+            self.game_owner = False
         
         @staticmethod
         def is_socket_closed(sock: socket.socket) -> bool:
@@ -51,15 +52,55 @@ class Server:
             except Exception as e:
                 print(e)
                 return False
+            
+        def determine_winner(self, game_data: GameData):
+            player1_choice = game_data.player1_choice
+            player2_choice = game_data.player2_choice
+            
+            player1 = game_data.player1
+            player2 = game_data.player2
+            
+            player1_choices = {
+                "rock": 1,
+                "paper": 3,
+                "scissors": 7
+            }
+            
+            player2_choices = {
+                "rock": 15,
+                "paper": 31,
+                "scissors": 63
+            }
+
+            winner_table = {
+                "16": '',
+                "34": '',
+                "70": '',
+                "18": player1,
+                "38": player1,
+                "64": player1,
+                "22": player2,
+                "32": player2,
+                "66": player2,
+            }
+            
+            winner = winner_table[str(player1_choices[player1_choice]+player2_choices[player2_choice])]
+            print(f"Winner: {winner}")
+            
+            self.lock.acquire()
+            Server.games[self.game_name] = game_data
+            self.lock.release()
+            
+            return winner
         
         def run(self):
             print(f"New thread created for accepted connection from: {self.address}")
             while not Server.UserThread.is_socket_closed(self.client):
-                response: Response = Response(success=False)
+                response: Response = Response(success=False) # initial response for the request
                 try:
-                    bytes = self.client.recv(buf)
-                    request: Request = pickle.loads(bytes)
-                    print(request)
+                    bytes = self.client.recv(buf) # wait for a request
+                    request: Request = pickle.loads(bytes) # decode the request
+                    if request.command != "get_games": print(request)
                     if request.command == "login":
                         if request.user in Server.users.keys():
                             response.error = "A user with that name is already logged in. Please change the name and try again."
@@ -74,36 +115,95 @@ class Server:
                         response.success = True
                     elif request.command == "create_game":
                         self.game_name = request.data["game_name"]
-                        if self.game_name in Server.games.keys():
+                        
+                        self.lock.acquire()
+                        games = Server.games.keys()
+                        self.lock.release()
+                        
+                        if self.game_name in games:
                             response.error = "A game with that name already exists. Please try a different name."
                             self.client.send(pickle.dumps(response))
                             continue
                         
+                        game_data = GameData(
+                            player1=self.user, 
+                            game_name=self.game_name,
+                            wins_required=request.data["req_wins"])
+                        game_data.password = request.data["game_password"]
+                        
                         self.lock.acquire()
-                        Server.games[self.game_name] = GameData(player1=self.user, game_name=self.game_name)
+                        Server.games[self.game_name] = game_data
                         self.lock.release()
                         
                         response.success = True
+                        self.game_owner = True
                     elif request.command == "join_game":
-                        # send client and game id
+                        self.game_name = request.data["game_name"]
+                        
+                        self.lock.acquire()
+                        game_data = Server.games[self.game_name]
+                        game_data.player2 = request.user
+                        Server.games[self.game_name] = game_data
+                        Server.users[game_data.player1].send(pickle.dumps(Response(True, {"opponent": request.user})))
+                        self.lock.release()
+                        
+                        response.data = {"opponent": game_data.player1}
                         response.success = True
-                    elif request.command == "show_games":
+                    elif request.command == "get_games":
                         response.data = {
                             "games": list(Server.games.values())
                         }
                         response.success = True
+                    elif request.command == "make_move":
+                        self.lock.acquire()
+                        game_data = Server.games[self.game_name]
+                        self.lock.release()
+                        
+                        if game_data.player1 == self.user:
+                            game_data.player1_choice = request.data["choice"]
+                        else:
+                            game_data.player2_choice = request.data["choice"]
+                        
+                        if game_data.player1_choice != "" and game_data.player2_choice != "":
+                            winner = self.determine_winner(game_data)
+                            
+                            if winner == game_data.player1:
+                                game_data.player1_wins+=1
+                            else:
+                                game_data.player2_wins+=1
+                                
+                            score = {
+                                game_data.player1: game_data.player1_wins,
+                                game_data.player2: game_data.player2_wins,
+                                f"{game_data.player1}_choice": game_data.player1_choice,
+                                f"{game_data.player2}_choice": game_data.player2_choice
+                            }
+                            
+                            game_data.player1_choice = ''
+                            game_data.player2_choice = ''
+
+                            response.success = True
+                            self.client.send(pickle.dumps(response))
+                            
+                            Server.users[game_data.player1].send(pickle.dumps(Response(True, score)))
+                            Server.users[game_data.player2].send(pickle.dumps(Response(True, score)))
+                        
+                        response.success = True
+                    elif request.command == "leave_game":
+                        #TODO
+                        pass
 
                     
                     self.client.send(pickle.dumps(response))
                 except Exception as e:
                     print("Exception caught")
-                    print(e)
+                    print(e, traceback.format_exc())
                     response.success = False
                     response.error = e
                     try: self.client.send(pickle.dumps(response))
                     except OSError as os_e:
                         print("OS Exception caught")
-                        print(os_e)
+                        print(os_e, traceback.format_exc())
                     break
 
             self.lock.acquire()
@@ -111,34 +211,11 @@ class Server:
                 del Server.users[self.user]
                 print(f"Removed user {self.user}")
             except Exception as e: print(e)
-            try: 
-                del Server.games[self.game_name]
-                print(f"Removed game {self.game_name}")
-            except Exception as e: print(e)
+            if self.game_owner:
+                try: 
+                    del Server.games[self.game_name]
+                    print(f"Removed game {self.game_name}")
+                except Exception as e: print(e)
             self.lock.release()
             self.client.close()
             print(f"{self.address} - {self.user} disconnected successfully, closing thread.")
-            
-            
-    class GameThread(Thread):
-        lock = Lock()
-        
-        choices = {
-            "1": "rock",
-            "3": "paper",
-            "7": "scissors"
-        }
-        
-        outcomes = {
-            ""
-        }
-        
-        @staticmethod
-        def run(game_id: str, user: str):
-            client = Server.users[user]
-            
-            bytes = client.recv(buf)
-            request: Request = pickle.loads(bytes)
-            #TODO 1. read sent data (player choice)
-            #TODO 2. if it's the non game_owner thread, wait for another input
-            #TODO 3. if it's the game_owner thread, calculate who won and and send a response updating the score and allowing new turn if nobody won

@@ -1,8 +1,11 @@
 import socket
+import pickle
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .Window import Window
+    from request import Request
+    from response import Response
 
 class Client:
         
@@ -15,8 +18,10 @@ class Client:
         self.server_address = ("localhost", 8080)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect(self.server_address)
-        
-    def send_command_to_server(self, command: str):
-        binary_command = command.encode()
-        self.socket.send(binary_command)
-            
+    
+    def send_request(self, request: 'Request') -> 'Response':
+        self.socket.send(pickle.dumps(request))
+        return self.wait_for_response()
+    
+    def wait_for_response(self) -> 'Response':
+        return pickle.loads(self.socket.recv(self.buffer_size))
