@@ -80,7 +80,6 @@ class Actions:
 
     def make_move(self):
         self.window.game_button_confirm.config(state="disabled")
-        self.window.choice.set('')
         request = Request(user=self.window.username.get(), command="make_move")
         request.data = {
             "choice": self.window.choice.get()
@@ -89,6 +88,9 @@ class Actions:
         if response.success:
             thread = WaitForOpponentMoveThread(self.window)
             thread.start()
+            
+    def leave_game(self):
+        pass
 
 
 class WaitForOpponentMoveThread(Thread):
@@ -115,4 +117,10 @@ class WaitForOpponentMoveThread(Thread):
             self.window.server_choice.set(score.data[players[3]])
             self.window.opponent_choice.set(score.data[players[2]])
             
+        if "winner" in score.data.keys():
+            self.window.winner.set(score.data["winner"])
+            #TODO game ending and restarting 
+            
         self.window.game_button_confirm.config(state="normal")
+        self.window.choice.set('')
+        

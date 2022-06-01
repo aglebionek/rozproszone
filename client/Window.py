@@ -101,21 +101,22 @@ class Window:
         self.server_choice = StringVar(master=self.root)
         self.opponent_choice = StringVar(master=self.root)
         self.opponent_score = IntVar(master=self.root, value=0)
+        self.winner = StringVar(master=self.root)
         # game name
-        Label(master=self.game_main_frame, text=f"Game name:", font=(25)).grid(row=0, column=1, columnspan=2, padx=5, pady=10)
-        Label(master=self.game_main_frame, textvariable=self.game_name, font=(25)).grid(row=1, column=1, columnspan=2, padx=5, pady=0)
+        Label(master=self.game_main_frame, text=f"Game name:", font=(25)).grid(row=0, column=1, padx=5, pady=10)
+        Label(master=self.game_main_frame, textvariable=self.game_name, font=(25)).grid(row=1, column=1, padx=5, pady=0)
         
-        Label(master=self.game_main_frame, text="You:", font=(25)).grid(row=2, column=0, columnspan=2, padx=5, pady=10)
-        Label(master=self.game_main_frame, text="Opponent:", font=(25)).grid(row=2, column=2, columnspan=2, padx=5, pady=10)
+        Label(master=self.game_main_frame, text="You:", font=(25)).grid(row=2, column=0, padx=5, pady=10)
+        Label(master=self.game_main_frame, text="Opponent:", font=(25)).grid(row=2, column=2, padx=5, pady=10)
         
-        Label(master=self.game_main_frame, textvariable=self.username, font=(25)).grid(row=3, column=0, columnspan=2, padx=5, pady=0)
-        Label(master=self.game_main_frame, textvariable=self.opponent_username, font=(25)).grid(row=3, column=2, columnspan=2, padx=5, pady=00)
+        Label(master=self.game_main_frame, textvariable=self.username, font=(25)).grid(row=3, column=0, padx=5, pady=0)
+        Label(master=self.game_main_frame, textvariable=self.opponent_username, font=(25)).grid(row=3, column=2, padx=5, pady=00)
 
         # here moves will be displayed (text or img)
-        Label(master=self.game_main_frame, text="Your move:", font=(25)).grid(row=4, column=0, columnspan=2, padx=5, pady=10)
-        Label(master=self.game_main_frame, textvariable=self.server_choice, font=(25)).grid(row=5, column=0, columnspan=2, padx=5, pady=10)
-        Label(master=self.game_main_frame, text="Opponent's move:", font=(25)).grid(row=4, column=2, columnspan=2, padx=5, pady=10)
-        Label(master=self.game_main_frame, textvariable=self.opponent_choice, font=(25)).grid(row=5, column=2, columnspan=2, padx=5, pady=10)
+        Label(master=self.game_main_frame, text="Your move:", font=(25)).grid(row=4, column=0, padx=5, pady=10)
+        Label(master=self.game_main_frame, textvariable=self.server_choice, font=(25)).grid(row=5, column=0, padx=5, pady=10)
+        Label(master=self.game_main_frame, text="Opponent's move:", font=(25)).grid(row=4, column=2, padx=5, pady=10)
+        Label(master=self.game_main_frame, textvariable=self.opponent_choice, font=(25)).grid(row=5, column=2, padx=5, pady=10)
         
         # button controls
         self.game_button_rock = Button(master=self.game_main_frame, text='Rock', command=lambda: self.choice.set("rock"), width=33, state=state)
@@ -125,20 +126,23 @@ class Window:
         self.game_button_scissors = Button(master=self.game_main_frame, text='Scissors', command=lambda: self.choice.set("scissors"), width=33, state=state)
         self.game_button_scissors.grid(row=6, column=2, padx=2, pady=5)
         
-        Label(master=self.game_main_frame, text="Selected move: ", font=(25)).grid(row=7, column=1, columnspan=2, padx=5, pady=20)
-        Label(master=self.game_main_frame, textvariable=self.choice, font=(25)).grid(row=8, column=1, columnspan=2, padx=5, pady=0)
+        Label(master=self.game_main_frame, text="Selected move: ", font=(25)).grid(row=7, column=1, padx=5, pady=20)
+        Label(master=self.game_main_frame, textvariable=self.choice, font=(25)).grid(row=8, column=1, padx=5, pady=0)
         
         self.game_button_confirm = Button(master=self.game_main_frame, text='Confirm', command=self.actions.make_move, width=33, state=state)
         self.game_button_confirm.grid(row=9, column=1, padx=2, pady=10)
 
         Label(master=self.game_main_frame, text=f"Score (required wins: {self.wins_required.get()})", font=(25)).grid(row=10, column=0, columnspan=2, padx=5, pady=20)
         Label(master=self.game_main_frame, text=f"Winner", font=(25)).grid(row=10, column=2, padx=5, pady=10)
+        Label(master=self.game_main_frame, textvariable=self.winner, font=(25)).grid(row=11, column=2, padx=5, pady=10)
         Label(master=self.game_main_frame, text="You: ", font=(25)).grid(row=11, column=0, padx=5, pady=10)
         Label(master=self.game_main_frame, textvariable=self.score, font=(25)).grid(row=11, column=1, padx=5, pady=0)
         Label(master=self.game_main_frame, text="Opponent: ", font=(25)).grid(row=12, column=0, padx=5, pady=10)
         Label(master=self.game_main_frame, textvariable=self.opponent_score, font=(25)).grid(row=12, column=1, padx=5, pady=0)
         
         #TODO add leave game button and handle  
+        self.game_button_leave = Button(master=self.game_main_frame, text='Leave', command=self.actions.leave_game, width=33)
+        
 
         if wait_for_opponent:
             thread = WaitForOpponentJoinThread(self)

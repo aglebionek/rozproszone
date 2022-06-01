@@ -181,6 +181,11 @@ class Server:
                             
                             game_data.player1_choice = ''
                             game_data.player2_choice = ''
+                            
+                            if game_data.player1_wins == game_data.wins_required:
+                                score["winner"] = game_data.player1
+                            elif game_data.player2_wins == game_data.wins_required:
+                                score["winner"] = game_data.player2
 
                             response.success = True
                             self.client.send(pickle.dumps(response))
