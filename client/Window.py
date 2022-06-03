@@ -29,6 +29,8 @@ class Window:
         self.generate_menu_frame()
         self.generate_login_frame()
         self.generate_create_game_frame()
+        
+        self.root.protocol("WM_DELETE_WINDOW", self.actions.close_window)
 
     def show_frame(self, frame_to_show: Frame):
         self.current_frame.pack_forget()
@@ -80,7 +82,7 @@ class Window:
         self.game_name = StringVar(master=self.root)
         self.wins_required = IntVar(master=self.root, value=1)
         self.password = StringVar(master=self.root)
-        #TODO check if non-empty, replace wins with number, validate
+        
         Label(master=self.create_game_main_frame, text="Game name", font=(25)).grid(row=0, column=0, padx=5, pady=10)
         Entry(master=self.create_game_main_frame, textvariable=self.game_name, width=50).grid(row=1, column=0, padx=5, pady=20)
         Label(master=self.create_game_main_frame, text="Required wins", font=(25)).grid(row=2, column=0, padx=5, pady=10)
@@ -90,6 +92,7 @@ class Window:
         Button(master=self.create_game_main_frame, text="Create Game", command=self.actions.create_game).grid(row=6, column=0, padx=5, pady=75)
         Button(master=self.create_game_main_frame, text="Cancel", command=lambda: self.show_frame(self.menu_main_frame), width=50).grid(row=7, column=0, padx=5, pady=50)
         self.create_game_errors = Text(master=self.create_game_main_frame, fg="red", state="disabled", borderwidth=0)
+        
         self.create_game_errors.bindtags((str(self.login_errors), str(self.root), "all"))
         self.create_game_errors.grid(row=7, column=0, padx=5, pady=10)
 
@@ -135,13 +138,14 @@ class Window:
         Label(master=self.game_main_frame, text=f"Score (required wins: {self.wins_required.get()})", font=(25)).grid(row=10, column=0, columnspan=2, padx=5, pady=20)
         Label(master=self.game_main_frame, text=f"Winner", font=(25)).grid(row=10, column=2, padx=5, pady=10)
         Label(master=self.game_main_frame, textvariable=self.winner, font=(25)).grid(row=11, column=2, padx=5, pady=10)
+        self.game_button_play_again = Button(master=self.game_main_frame, text='Play Again', command=self.actions.play_again, width=33)
         Label(master=self.game_main_frame, text="You: ", font=(25)).grid(row=11, column=0, padx=5, pady=10)
         Label(master=self.game_main_frame, textvariable=self.score, font=(25)).grid(row=11, column=1, padx=5, pady=0)
         Label(master=self.game_main_frame, text="Opponent: ", font=(25)).grid(row=12, column=0, padx=5, pady=10)
         Label(master=self.game_main_frame, textvariable=self.opponent_score, font=(25)).grid(row=12, column=1, padx=5, pady=0)
         
-        #TODO add leave game button and handle  
         self.game_button_leave = Button(master=self.game_main_frame, text='Leave', command=self.actions.leave_game, width=33)
+        self.game_button_leave.grid(row=13, column=1, padx=5, pady=10)
         
 
         if wait_for_opponent:
@@ -159,8 +163,9 @@ class RefreshGamesThread(Thread):
 
     def run(self):
         while self.window.current_frame == self.window.join_game_main_frame:
-            #TODO rework the thread to only rerender new games/remove deleted ones
+            print("Refreshing list of games")
             self.current_games = self.window.actions.get_games()
+            print(self.current_games)
             self.window.generate_join_game_frame(self.current_games)
             sleep(10)
             
@@ -171,9 +176,12 @@ class WaitForOpponentJoinThread(Thread):
         self.window = window
     
     def run(self) -> None:
+        print("waiting for oponent to join")
         opponent_data = self.window.client.wait_for_response()
         if not opponent_data.success:
             return
+        if "opponent" not in opponent_data.data:
+            return 
         self.window.opponent_username.set(opponent_data.data["opponent"])
         self.window.game_button_rock.config(state="normal")
         self.window.game_button_paper.config(state="normal")

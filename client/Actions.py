@@ -1,5 +1,7 @@
+import pickle
 from threading import Thread
-from tkinter import W
+from tkinter.ttk import Button
+import traceback
 from typing import TYPE_CHECKING
 
 from request import Request
@@ -34,10 +36,11 @@ class Actions:
         request.data = {
             "game_name": game_name
         }
+        print(request)
         response = self.client.send_request(request)
-        self.window.game_name.set(game_name)
         if response.success:
             self.window.generate_game_frame(wait_for_opponent=False, opponent=response.data["opponent"], state="normal")
+            self.window.game_name.set(game_name)
             self.window.show_frame(self.window.game_main_frame)
             return
 
@@ -48,6 +51,15 @@ class Actions:
         try: games = response.data["games"]
         except Exception as e: print(e)
         return games
+    
+    def close_window(self):
+        try:
+            if self.window.current_frame == self.window.game_main_frame:
+                self.leave_game(change_window = False)
+        except Exception as e:
+            print(e, traceback.format_exc())
+        finally:
+            self.window.root.destroy()
 
 
     def create_game(self):
@@ -85,12 +97,46 @@ class Actions:
             "choice": self.window.choice.get()
         }
         response = self.client.send_request(request)
+
+        if "host_left" in response.data.keys():
+            print("host left")
+            self.window.generate_menu_frame()
+            self.window.show_frame(self.window.menu_main_frame)
+            return
+        
+        if "guest_left" in response.data.keys():
+            print("guest left")
+            self.window.generate_game_frame()
+            self.window.show_frame(self.window.game_main_frame)
+            return 
+                    
         if response.success:
             thread = WaitForOpponentMoveThread(self.window)
             thread.start()
             
-    def leave_game(self):
-        pass
+    def leave_game(self, change_window = True):
+        request = Request(user=self.window.username.get(), command="leave_game")
+        self.client.socket.send(pickle.dumps(request))
+        if change_window:
+            self.window.generate_menu_frame()
+            self.window.show_frame(self.window.menu_main_frame)
+            
+    def play_again(self):
+        request = Request(user=self.window.username.get(), command="play_again")
+        response = self.client.send_request(request)
+        if response.success:
+            self.window.choice.set('')
+            self.window.server_choice.set('')
+            self.window.opponent_choice.set('')
+            self.window.score.set(0)
+            self.window.opponent_score.set(0)
+            self.window.winner.set('')
+            
+            try:
+                self.window.game_button_play_again.grid_remove()
+            except Exception:
+                pass
+            
 
 
 class WaitForOpponentMoveThread(Thread):
@@ -102,7 +148,20 @@ class WaitForOpponentMoveThread(Thread):
         score = self.window.client.wait_for_response()
         if not score.success:
             return
+        print(score)
+        
         players = list(score.data.keys())
+        if "left" in players:
+            if score.data["left"] == "guest":
+                print("guest left")
+                self.window.generate_game_frame()
+                self.window.show_frame(self.window.game_main_frame)
+            else:
+                print("host left")
+                self.window.generate_menu_frame()
+                self.window.show_frame(self.window.menu_main_frame)
+            return
+        
         if self.window.username.get() == players[0]:
             self.window.score.set(score.data[players[0]])
             self.window.opponent_score.set(score.data[players[1]])
@@ -117,10 +176,38 @@ class WaitForOpponentMoveThread(Thread):
             self.window.server_choice.set(score.data[players[3]])
             self.window.opponent_choice.set(score.data[players[2]])
             
-        if "winner" in score.data.keys():
+        if "winner" in players:
             self.window.winner.set(score.data["winner"])
-            #TODO game ending and restarting 
-            
-        self.window.game_button_confirm.config(state="normal")
+            if score.data["game_owner"] == self.window.username.get():
+                self.window.game_button_play_again.grid(row=12, column=2, padx=5, pady=10)
+            else:
+                thread = WaitForPlayAgainThread(self.window)
+                thread.start()
+        else:
+            self.window.game_button_confirm.config(state="normal")
         self.window.choice.set('')
         
+class WaitForPlayAgainThread(Thread):
+    def __init__(self, window: 'Window', group=None, target=None, name=None, args=(), kwargs=None, *, daemon=None):
+        super().__init__(group, target, name, args, kwargs, daemon=daemon)
+        self.window = window
+    
+    def run(self) -> None:
+        response = self.window.client.wait_for_response()
+        print(response)
+        
+        if response.success:
+            #TODO reset scores, winner, remove play again button for host
+            self.window.choice.set('')
+            self.window.server_choice.set('')
+            self.window.opponent_choice.set('')
+            self.window.score.set(0)
+            self.window.opponent_score.set(0)
+            self.window.winner.set('')
+            self.window.game_button_confirm.config(state="normal")
+            
+            try:
+                self.window.game_button_play_again.grid_remove()
+            except Exception:
+                pass
+            return
