@@ -90,6 +90,12 @@ class Actions:
         self.window.set_error(response.error, error_widget)
 
     def make_move(self):
+        error_widget = self.window.game_errors
+        if self.window.choice.get() == '':
+            self.window.set_error("pick your move", error_widget)
+            return
+        self.window.set_error("", error_widget)
+        
         self.window.game_button_confirm.config(state="disabled")
         request = Request(user=self.window.username.get(), command="make_move")
         request.data = {

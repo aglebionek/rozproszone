@@ -113,6 +113,10 @@ class Window:
         Label(master=self.game_main_frame, textvariable=self.username, font=(25)).grid(row=3, column=0, padx=5, pady=0)
         Label(master=self.game_main_frame, textvariable=self.opponent_username, font=(25)).grid(row=3, column=2, padx=5, pady=00)
 
+        self.game_errors = Text(master=self.game_main_frame, fg="red", state="disabled", borderwidth=0)
+        self.game_errors.bindtags((str(self.game_errors), str(self.root), "all"))
+        self.game_errors.grid(row=14, column=1)
+        
         # here moves will be displayed (text or img)
         Label(master=self.game_main_frame, text="Your move:", font=(25)).grid(row=4, column=0, padx=5, pady=10)
         Label(master=self.game_main_frame, textvariable=self.server_choice, font=(25)).grid(row=5, column=0, padx=5, pady=10)
