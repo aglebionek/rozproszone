@@ -93,30 +93,18 @@ class Server:
             
             return winner
         
-        def await_request(self) -> Request:
-            return pickle.loads(self.client.recv(buf))
-        
-        def send_response(self, response: Response):
-            self.client.send(pickle.dumps(response))
-        
         def run(self):
             print(f"New thread created for accepted connection from: {self.address}")
             while not Server.UserThread.is_socket_closed(self.client):
-                response: Response = Response() # initial response for the request
+                response: Response = Response(success=False) # initial response for the request
                 try:
-                    request: Request = self.await_request()
-                    print(request)
-                    response.command = request.command
-                    
-                    if request.command == "kill_thread":
-                        self.send_response(response)
-                        continue
-                    
-                    
+                    bytes = self.client.recv(buf) # wait for a request
+                    request: Request = pickle.loads(bytes) # decode the request
+                    if request.command != "get_games": print(request)
                     if request.command == "login":
                         if request.user in Server.users.keys():
                             response.error = "A user with that name is already logged in. Please change the name and try again."
-                            self.send_response(response)
+                            self.client.send(pickle.dumps(response))
                             continue
                         
                         self.lock.acquire()
@@ -124,9 +112,9 @@ class Server:
                         self.lock.release()
                         
                         self.user = request.user
-                        
-                    
                     elif request.command == "create_game":
+                        response.data = {"game_created": True}
+                        
                         self.game_name = request.data["game_name"]
                         
                         self.lock.acquire()
@@ -135,7 +123,7 @@ class Server:
                         
                         if self.game_name in games:
                             response.error = "A game with that name already exists. Please try a different name."
-                            self.send_response(response)
+                            self.client.send(pickle.dumps(response))
                             continue
                         
                         game_data = GameData(
@@ -150,8 +138,6 @@ class Server:
                         self.lock.release()
                         
                         self.game_owner = True
-                        
-                    
                     elif request.command == "join_game":
                         self.game_name = request.data["game_name"]
                         
@@ -159,21 +145,21 @@ class Server:
                         game_data = Server.games[self.game_name]
                         game_data.player2 = request.user
                         Server.games[self.game_name] = game_data
-                        Server.users[game_data.player1].send(pickle.dumps(Response(command="opponent_joined", data={"opponent": request.user})))
+                        Server.users[game_data.player1].send(pickle.dumps(Response(True, {"opponent": request.user})))
                         self.lock.release()
                         
-                        response.data = {"opponent": game_data.player1, "game_name": self.game_name}
-                        
-                        
+                        response.data = {"opponent": game_data.player1}
                     elif request.command == "get_games":
+                        response.data["games"] = []
+                        self.lock.acquire()
                         print("Getting games...")
                         response.data = {
                             "games": [game for game in list(Server.games.values()) if game.player2 == '']
                         }
                         print("Games got, sending...")
-                        
-                        
+                        self.lock.release()
                     elif request.command == "play_again":
+                        
                         game_data.player1_choice = ''
                         game_data.player2_choice = ''
                         game_data.player1_wins = 0
@@ -182,14 +168,35 @@ class Server:
                         
                         # if guest didn't leave
                         if game_data.player2 != '':
-                            Server.users[game_data.player2].send(pickle.dumps(Response("play_again", {"play_again": True})))
+                            Server.users[game_data.player2].send(pickle.dumps(Response(True, {"play_again": True})))
                             response.data = {"play_again": True}
                         else:
                             response.data = {"play_again": False}
-                            
-                            
                     elif request.command == "make_move":
                         response.data = {"make_move": True}
+                        
+                        try:
+                            self.lock.acquire()
+                            game_data = Server.games[self.game_name]
+                            self.lock.release()
+                        except KeyError:
+                            self.lock.release()
+                            print("The game doesn't exist anymore, resetting...")
+                            response.success = True
+                            response.data = {
+                                "host_left": True
+                            }
+                            self.client.send(pickle.dumps(response))
+                            continue 
+                        
+                        if game_data.player2 == '':
+                            print("The guest left, resetting...")
+                            response.success = True
+                            response.data = {
+                                "guest_left": True
+                            }
+                            self.client.send(pickle.dumps(response))
+                            continue 
                         
                         if game_data.player1 == self.user:
                             game_data.player1_choice = request.data["choice"]
@@ -205,8 +212,8 @@ class Server:
                                 game_data.player2_wins+=1
                                 
                             score = {
-                                f"{game_data.player1}_wins": game_data.player1_wins,
-                                f"{game_data.player2}_wins": game_data.player2_wins,
+                                game_data.player1: game_data.player1_wins,
+                                game_data.player2: game_data.player2_wins,
                                 f"{game_data.player1}_choice": game_data.player1_choice,
                                 f"{game_data.player2}_choice": game_data.player2_choice
                             }
@@ -216,18 +223,24 @@ class Server:
                             
                             if game_data.player1_wins == game_data.wins_required:
                                 score["winner"] = game_data.player1
+                                score["game_owner"] = game_data.game_owner
                             elif game_data.player2_wins == game_data.wins_required:
                                 score["winner"] = game_data.player2
+                                score["game_owner"] = game_data.game_owner
                                 
+
+                            response.success = True
+                            self.client.send(pickle.dumps(response))
+                            
                             print("Round concluded, sending game results")
-                            Server.users[game_data.player1].send(pickle.dumps(Response("round_concluded", score)))
-                            Server.users[game_data.player2].send(pickle.dumps(Response("round_concluded", score)))
+                            Server.users[game_data.player1].send(pickle.dumps(Response(True, score)))
+                            Server.users[game_data.player2].send(pickle.dumps(Response(True, score)))
                             
                             continue
                         
                     elif request.command == "leave_game":
+                        response.data = {"leave_game": True}
                         print(f"{self.user} left the game {self.game_name}")
-                        
                         try:
                             self.lock.acquire()
                             game_data = Server.games[self.game_name]
@@ -236,19 +249,19 @@ class Server:
                             self.lock.release()
                             print("The game doesn't exist anymore, resetting...")
                             response.data = {
-                                "left": "host"
+                                "host_left": True
                             }
-                            self.send_response(response)
+                            self.client.send(pickle.dumps(response))
                             continue 
                         
                         if request.user == game_data.game_owner:
                             self.lock.acquire()
                             del Server.games[self.game_name]
                             self.lock.release()
-                            print(f"Removed game {self.game_name}")
+                            print(f"removed game {self.game_name}")
                             if game_data.player2 != '':
-                                Server.users[game_data.player2].send(pickle.dumps(Response("leave_game", {"left": "host"})))
-                            response.data = {"left": "host"}
+                                Server.users[game_data.player2].send(pickle.dumps(Response(True, {"left": "host"})))
+                                
                         else:
                             game_data.player1_choice = ''
                             game_data.player2_choice = ''
@@ -257,18 +270,17 @@ class Server:
                             game_data.winner = ''
                             game_data.player2 = ''
                             
-                            if game_data.player1 != '':
-                                Server.users[game_data.player1].send(pickle.dumps(Response("leave_game", {"left": "guest"})))
-                            response.data = {"left": "guest"}
-                            
+                            # if game_data.player1 != '':
+                            #     Server.users[game_data.player1].send(pickle.dumps(Response(True, {"left": "guest"})))
+                                
                         self.game_name = ''
 
-                    print("Sending response...")
-                    print(response)
-                    self.send_response(response)
+                    response.success = True
+                    self.client.send(pickle.dumps(response))
                 except Exception as e:
                     print("Exception caught")
                     print(e, traceback.format_exc())
+                    response.success = False
                     response.error = e
                     try: self.client.send(pickle.dumps(response))
                     except OSError as os_e:

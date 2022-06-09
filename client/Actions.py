@@ -1,7 +1,6 @@
 from threading import Thread
 import traceback
 from typing import TYPE_CHECKING
-
 from request import Request
 
 if TYPE_CHECKING:
@@ -9,11 +8,12 @@ if TYPE_CHECKING:
     from .Client import Client
     from game_data import GameData
 
-class Actions:
+class Requests:
             
     def __init__(self, window: 'Window', client: 'Client') -> None:
         self.window = window
         self.client = client
+        self.waiting_for_opponent_to_join = False
     
     def login(self):
         nickname = self.window.username.get()
@@ -104,7 +104,7 @@ class Actions:
         response = self.client.send_request(request)
         print("make move response")
         print(response)
-        if "host_left" in response.data.keys():
+        if "host_left" or "left" in response.data.keys():
             print("host left")
             self.window.generate_menu_frame()
             self.window.show_frame(self.window.menu_main_frame)
@@ -123,6 +123,7 @@ class Actions:
     def leave_game(self, change_window = True):
         request = Request(user=self.window.username.get(), command="leave_game")
         response = self.client.send_request(request)
+        self.waiting_for_opponent_to_join = False
         print("leave game response", response)
         if response.success:
             self.window.play_again_status.set(False)
@@ -160,11 +161,11 @@ class WaitForOpponentMoveThread(Thread):
         self.window = window
     
     def run(self) -> None:
-        score = self.window.client.wait_for_response()
+        score = self.window.client.get_response()
         print("Wait for opponent move thread read something")
+        print(score)
         if not score.success:
             return
-        print(score)
         
         try:
             players = list(score.data.keys())
@@ -209,6 +210,8 @@ class WaitForOpponentMoveThread(Thread):
             print(e, traceback.format_exc())
             
         print("Wait for opponent thread ended")
+        self.window.actions.waiting_for_opponent_to_join = False
+        
         
         
 class WaitForPlayAgainThread(Thread):
@@ -221,7 +224,7 @@ class WaitForPlayAgainThread(Thread):
         while self.window.play_again_status.get():
             print("Waiting for play again...")
             
-            response = self.window.client.wait_for_response()
+            response = self.window.client.get_response()
             print("Wait for play again thread got something")
             print(response)
             
@@ -233,6 +236,14 @@ class WaitForPlayAgainThread(Thread):
                         self.window.show_frame(self.window.menu_main_frame)
                     self.window.play_again_status.set(False)
                     break
+                
+                if "leave_game" in response.data.keys():
+                    self.window.play_again_status.set(False)
+                    print("here1")
+                    self.window.generate_menu_frame()
+                    print("here2")
+                    self.window.show_frame(self.window.menu_main_frame)
+                    print("here3")
                 self.window.choice.set('')
                 self.window.server_choice.set('')
                 self.window.opponent_choice.set('')
