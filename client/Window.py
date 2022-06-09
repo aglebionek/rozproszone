@@ -171,14 +171,19 @@ class WaitForOpponentJoinThread(Thread):
     def __init__(self, window: Window, group=None, target=None, name=None, args=(), kwargs=None, *, daemon=None):
         super().__init__(group, target, name, args, kwargs, daemon=daemon)
         self.window = window
+        self.window.actions.waiting_for_opponent_to_join = True
     
     def run(self) -> None:
         sleep(1)
         print("waiting for oponent to join")
-        while True:
+        while self.window.actions.waiting_for_opponent_to_join:
             try:
                 opponent_data = self.window.client.wait_for_response()
                 print("opponent data", opponent_data)
+                if "leave_game" in opponent_data.data.keys():
+                    self.window.generate_menu_frame()
+                    self.window.show_frame(self.window.menu_main_frame)
+                    self.window.actions.waiting_for_opponent_to_join = False
                 if "opponent" not in opponent_data.data:
                     return 
                 if not opponent_data.success:
@@ -189,9 +194,11 @@ class WaitForOpponentJoinThread(Thread):
                 self.window.game_button_scissors.config(state="normal")
                 self.window.game_button_confirm.config(state="normal")
                 self.window.choice.set('')
+                self.window.actions.waiting_for_opponent_to_join = False
                 break
             except Exception as e:
                 print(e, traceback.format_exc())
-            
+        
+        self.window.actions.waiting_for_opponent_to_join = False
         print("Waiting for opponent to join thread ended")
         

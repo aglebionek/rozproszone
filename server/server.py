@@ -182,6 +182,7 @@ class Server:
                         except KeyError:
                             self.lock.release()
                             print("The game doesn't exist anymore, resetting...")
+                            response.success = True
                             response.data = {
                                 "host_left": True
                             }
@@ -190,6 +191,7 @@ class Server:
                         
                         if game_data.player2 == '':
                             print("The guest left, resetting...")
+                            response.success = True
                             response.data = {
                                 "guest_left": True
                             }
