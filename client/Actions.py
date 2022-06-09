@@ -1,16 +1,14 @@
-import pickle
 from threading import Thread
 import traceback
 from typing import TYPE_CHECKING
 from request import Request
-from response import Response
 
 if TYPE_CHECKING:
     from .Window import Window
     from .Client import Client
     from game_data import GameData
 
-class Actions:
+class Requests:
             
     def __init__(self, window: 'Window', client: 'Client') -> None:
         self.window = window
@@ -157,7 +155,7 @@ class WaitForOpponentMoveThread(Thread):
         self.window = window
     
     def run(self) -> None:
-        score = self.window.client.wait_for_response()
+        score = self.window.client.get_response()
         print("Wait for opponent move thread read something")
         print(score)
         if not score.success:
@@ -220,7 +218,7 @@ class WaitForPlayAgainThread(Thread):
         while self.window.play_again_status.get():
             print("Waiting for play again...")
             
-            response = self.window.client.wait_for_response()
+            response = self.window.client.get_response()
             print("Wait for play again thread got something")
             print(response)
             

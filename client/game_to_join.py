@@ -6,14 +6,14 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .Window import Window
     from game_data import GameData
-    from .Actions import Actions
+    from .Requests import Requests
 
 class GameToJoin:
 
-    def __init__(self, window: 'Window', actions: 'Actions',  game_data: 'GameData' = {}) -> None:
+    def __init__(self, window: 'Window', requests: 'Requests',  game_data: 'GameData' = {}) -> None:
         self.window = window
         self.game_data = game_data
-        self.actions = actions
+        self.requests = requests
         pass
 
     def generate_game_to_join(self, row):
@@ -34,7 +34,7 @@ class GameToJoin:
 
     def join_game(self):
         if self.password_input.get() == self.game_data.password:
-            self.actions.join_game(game_name=self.game_data.game_name)
+            self.requests.join_game(game_name=self.game_data.game_name)
         else:
             self.window.set_error("Incorrect password", self.join_error)
         pass
